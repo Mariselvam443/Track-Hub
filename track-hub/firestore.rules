@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - userId: string (required) - The unique ID of the user
+    //   - name: string (optional) - User's display name
+    //   - email: string (optional) - User's email address
+    //   - photoURL: string (optional) - URL to user's photo
+    //   - bannerURL: string (optional) - URL to user's banner
+    //
+    // Collection: habits
+    // Document ID: {habitId}
+    // Fields:
+    //   - userId: string (required) - Owner of the habit
+    //   - habitName: string (required) - Name of the habit
+    //   - date: string (required, YYYY-MM-DD) - Date of the entry
+    //   - status: bool (required) - Whether the habit was completed
+    //
+    // Collection: study
+    // Document ID: {studyId}
+    // Fields:
+    //   - userId: string (required) - Owner of the session
+    //   - subject: string (required) - Subject studied
+    //   - hours: number (required) - Duration in hours
+    //   - date: string (required, YYYY-MM-DD) - Date of the session
+    //
+    // Collection: finance
+    // Document ID: {financeId}
+    // Fields:
+    //   - userId: string (required) - Owner of the transaction
+    //   - type: string (required, 'income'|'expense') - Transaction type
+    //   - amount: number (required) - Transaction amount
+    //   - category: string (required) - Transaction category
+    //   - date: string (required, YYYY-MM-DD) - Date of the transaction
+    //
+    // Collection: templates
+    // Document ID: {templateId}
+    // Fields:
+    //   - templateName: string (required)
+    //   - category: string (required, 'Habit'|'Study'|'Finance')
+    //   - createdBy: string (required) - User ID of creator
+    //   - jsonData: string (required) - Serialized template data
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isRequestOwner() {
+      return isAuthenticated() && request.auth.uid == request.resource.data.userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDate(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    function isTeamMember(userId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(userId)/teamMembers/$(request.auth.token.email.lower()));
+    }
+
+    // ===============================================================
+    // Validation Functions
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.userId is string && data.userId.size() > 0 &&
+             (!('email' in data) || isValidEmail(data.email)) &&
+             (!('name' in data) || (data.name is string && data.name.size() < 100));
+    }
+
+    function isValidHabit(data) {
+      return data.userId is string && data.userId.size() > 0 &&
+             data.habitName is string && data.habitName.size() > 0 && data.habitName.size() < 100 &&
+             isValidDate(data.date) &&
+             data.status is bool;
+    }
+
+    function isValidStudy(data) {
+      return data.userId is string && data.userId.size() > 0 &&
+             data.subject is string && data.subject.size() > 0 && data.subject.size() < 100 &&
+             data.hours is number && data.hours >= 0 &&
+             isValidDate(data.date);
+    }
+
+    function isValidFinance(data) {
+      return data.userId is string && data.userId.size() > 0 &&
+             data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount >= 0 &&
+             data.category is string && data.category.size() > 0 &&
+             isValidDate(data.date);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isTeamMember(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+
+      match /folders/{folderId} {
+        allow read: if isOwner(userId) || isTeamMember(userId);
+        allow write: if isOwner(userId);
+      }
+      match /files/{fileId} {
+        allow read: if isOwner(userId) || isTeamMember(userId);
+        allow write: if isOwner(userId);
+      }
+      match /notes/{noteId} {
+        allow read: if isOwner(userId) || isTeamMember(userId);
+        allow write: if isOwner(userId);
+      }
+      match /teamMembers/{memberId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    match /habits/{habitId} {
+      allow read: if isDocOwner();
+      allow create: if isRequestOwner() && isValidHabit(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidHabit(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /study/{studyId} {
+      allow read: if isDocOwner();
+      allow create: if isRequestOwner() && isValidStudy(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidStudy(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /finance/{financeId} {
+      allow read: if isDocOwner();
+      allow create: if isRequestOwner() && isValidFinance(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidFinance(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.createdBy;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.createdBy;
+    }
+  }
+}

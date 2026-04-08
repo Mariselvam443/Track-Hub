@@ -1,0 +1,149 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "bannerURL": { "type": "string" }
+      },
+      "required": ["userId"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "Daily habit tracking entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "habitName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "boolean" }
+      },
+      "required": ["userId", "habitName", "date", "status"]
+    },
+    "Study": {
+      "title": "Study",
+      "description": "Study session tracking entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subject": { "type": "string" },
+        "hours": { "type": "number" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["userId", "subject", "hours", "date"]
+    },
+    "Finance": {
+      "title": "Finance",
+      "description": "Income or expense entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["userId", "type", "amount", "category", "date"]
+    },
+    "Template": {
+      "title": "Template",
+      "description": "Reusable tracker template",
+      "type": "object",
+      "properties": {
+        "templateName": { "type": "string" },
+        "category": { "type": "string", "enum": ["Habit", "Study", "Finance"] },
+        "createdBy": { "type": "string" },
+        "jsonData": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["templateName", "category", "createdBy", "jsonData", "createdAt"]
+    },
+    "Folder": {
+      "title": "Folder",
+      "description": "User folder for organizing files",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "createdAt"]
+    },
+    "File": {
+      "title": "File",
+      "description": "User file metadata",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "folderId": { "type": "string" },
+        "size": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "size", "createdAt"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "User note",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "createdAt"]
+    },
+    "TeamMember": {
+      "title": "Team Member",
+      "description": "Team member information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/users/{userId}/folders/{folderId}": {
+      "schema": "Folder",
+      "description": "User folders"
+    },
+    "/users/{userId}/files/{fileId}": {
+      "schema": "File",
+      "description": "User files"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": "Note",
+      "description": "User notes"
+    },
+    "/users/{userId}/teamMembers/{memberId}": {
+      "schema": "TeamMember",
+      "description": "Team members"
+    },
+    "/habits/{habitId}": {
+      "schema": "Habit",
+      "description": "Habit tracking entries"
+    },
+    "/study/{studyId}": {
+      "schema": "Study",
+      "description": "Study tracking entries"
+    },
+    "/finance/{financeId}": {
+      "schema": "Finance",
+      "description": "Finance tracking entries"
+    },
+    "/templates/{templateId}": {
+      "schema": "Template",
+      "description": "Shared templates"
+    }
+  }
+}
